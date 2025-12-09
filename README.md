@@ -8,7 +8,11 @@ A lightweight browser extension that hides ad UI elements and distractions on Yo
 - **UI Cleanup**: Removes promotional content, suggested ads, and distracting elements
 - **Auto-Skip**: Automatically clicks "Skip Ad" buttons when they appear
 - **Real-time Monitoring**: Continuously monitors for new ad elements using DOM observers
-- **Toggle Control**: Enable/disable the extension through options page
+- **Modern UI**: Beautiful popup and settings interface with statistics tracking
+- **Toggle Control**: Enable/disable the extension through popup or options page
+- **Statistics**: Track ads blocked, pages cleaned, and more
+- **Advanced Settings**: Customize cleanup interval, add custom selectors, whitelist channels
+- **Backup & Restore**: Export/import settings and statistics
 - **Lightweight**: Minimal performance impact with efficient cleanup routines
 
 ## 📁 Project Structure

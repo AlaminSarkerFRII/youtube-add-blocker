@@ -1,18 +1,390 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-  <head><meta charset="utf-8"><title>YouTube Clean UI Options</title></head>
-  <body>
-    <label>
-      <input type="checkbox" id="enableClean" />
-      Enable cleanup
-    </label>
-    <script>
-      const key = 'ycu_enabled';
-      const box = document.getElementById('enableClean');
-      box.addEventListener('change', () => {
-        localStorage.setItem(key, box.checked ? '1' : '0');
-      });
-      box.checked = localStorage.getItem(key) !== '0';
-    </script>
-  </body>
+<head>
+    <meta charset="utf-8">
+    <title>YouTube Clean UI - Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .setting-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: #667eea;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .button:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .button.secondary {
+            background: #6c757d;
+        }
+
+        .button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .button.danger {
+            background: #dc3545;
+        }
+
+        .button.danger:hover {
+            background: #c82333;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .input-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .setting-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .toggle-switch {
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 YouTube Clean UI Settings</h1>
+            <p>Configure your ad blocking experience</p>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="section">
+            <h2 class="section-title">🛡️ General Settings</h2>
+            
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Enable Ad Blocking</div>
+                    <div class="setting-description">Block all types of YouTube ads and promotional content</div>
+                </div>
+                <div class="toggle-switch" id="enableClean"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Auto-skip Video Ads</div>
+                    <div class="setting-description">Automatically click skip buttons when available</div>
+                </div>
+                <div class="toggle-switch" id="autoSkip"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Hide Promoted Content</div>
+                    <div class="setting-description">Remove promoted videos and sponsored content</div>
+                </div>
+                <div class="toggle-switch" id="hidePromoted"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Clean Homepage</div>
+                    <div class="setting-description">Remove ads and suggestions from YouTube homepage</div>
+                </div>
+                <div class="toggle-switch" id="cleanHomepage"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">⚡ Performance</h2>
+            
+            <div class="input-group">
+                <label for="cleanupInterval">Cleanup Interval (milliseconds)</label>
+                <input type="number" id="cleanupInterval" min="100" max="5000" step="100" value="500">
+                <small style="color: #666;">Lower values check more frequently but may use more CPU</small>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Enable Debug Logging</div>
+                    <div class="setting-description">Show detailed console messages for troubleshooting</div>
+                </div>
+                <div class="toggle-switch" id="debugLogging"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📊 Statistics</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalAdsBlocked">0</div>
+                    <div class="stat-label">Total Ads Blocked</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalPagesCleaned">0</div>
+                    <div class="stat-label">Pages Cleaned</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSkips">0</div>
+                    <div class="stat-label">Ads Skipped</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="daysActive">0</div>
+                    <div class="stat-label">Days Active</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="button secondary" id="resetStats">Reset Statistics</button>
+                <button class="button" id="exportStats">Export Data</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🔧 Advanced Options</h2>
+            
+            <div class="input-group">
+                <label for="customSelectors">Custom CSS Selectors (one per line)</label>
+                <textarea id="customSelectors" placeholder=".example-ad-class&#10;#example-ad-id"></textarea>
+                <small style="color: #666;">Add additional CSS selectors to block custom ad elements</small>
+            </div>
+
+            <div class="input-group">
+                <label for="whitelist">Whitelist Channels (one per line)</label>
+                <textarea id="whitelist" placeholder="channel-name-1&#10;channel-name-2"></textarea>
+                <small style="color: #666;">Don't block ads on these channels (one per line)</small>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="button danger" id="resetSettings">Reset All Settings</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">💾 Backup & Restore</h2>
+            
+            <div style="margin-bottom: 15px;">
+                <button class="button" id="backupSettings">Backup Settings</button>
+                <button class="button secondary" id="restoreSettings">Restore Settings</button>
+            </div>
+            
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+        </div>
+
+        <div class="footer">
+            <p>YouTube Clean UI v1.0.0</p>
+            <p>
+                <a href="#" id="helpLink">Help</a> • 
+                <a href="#" id="githubLink">GitHub</a> • 
+                <a href="#" id="reportIssue">Report Issue</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
 </html>

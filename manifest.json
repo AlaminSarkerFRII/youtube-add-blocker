@@ -3,8 +3,16 @@
     "name": "YouTube Clean UI",
     "description": "Hide ad UI elements and distractions on YouTube.",
     "version": "1.0.0",
-    "permissions": ["activeTab", "scripting"],
+    "permissions": ["activeTab", "scripting", "storage"],
     "host_permissions": ["https://www.youtube.com/*", "https://youtube.com/*"],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "YouTube Clean UI"
+    },
+    "options_page": "options.html",
     "content_scripts": [
       {
         "matches": ["https://www.youtube.com/*", "https://youtube.com/*"],
@@ -14,4 +22,3 @@
       }
     ]
   }
-  
