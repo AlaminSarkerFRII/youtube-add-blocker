@@ -378,19 +378,19 @@ class OptionsController {
 
     openHelpPage() {
         chrome.tabs.create({ 
-            url: 'https://github.com/yourusername/youtube-add-blocker#troubleshooting' 
+            url: 'https://github.com/AlaminSarkerFRII/youtube-add-blocker#troubleshooting' 
         });
     }
 
     openGitHub() {
         chrome.tabs.create({ 
-            url: 'https://github.com/yourusername/youtube-add-blocker' 
+            url: 'https://github.com/AlaminSarkerFRII/youtube-add-blocker' 
         });
     }
 
     reportIssue() {
         chrome.tabs.create({ 
-            url: 'https://github.com/yourusername/youtube-add-blocker/issues/new' 
+            url: 'https://github.com/AlaminSarkerFRII/youtube-add-blocker/issues/new' 
         });
     }
 }
