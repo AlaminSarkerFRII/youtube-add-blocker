@@ -1,6 +1,30 @@
+// Statistics tracking
+let adsBlocked = 0;
+let pagesCleaned = 0;
+let lastCleanupTime = Date.now();
+
+// Update statistics in storage
+function updateStats(type) {
+  if (type === 'adsBlocked') {
+    adsBlocked++;
+    chrome.storage.local.get(['adsBlocked'], (result) => {
+      const total = (result.adsBlocked || 0) + 1;
+      chrome.storage.local.set({ adsBlocked: total });
+    });
+  } else if (type === 'pagesCleaned') {
+    pagesCleaned++;
+    chrome.storage.local.get(['pagesCleaned'], (result) => {
+      const total = (result.pagesCleaned || 0) + 1;
+      chrome.storage.local.set({ pagesCleaned: total });
+    });
+  }
+}
+
 // Utility: safe query removal
 function removeNodes(selectors) {
   if (!isEnabled()) return;
+  
+  let blockedCount = 0;
   
   selectors.forEach(sel => {
     try {
@@ -11,12 +35,18 @@ function removeNodes(selectors) {
           node.style.visibility = 'hidden';
           node.style.opacity = '0';
           node.setAttribute('data-ycu-hidden', 'true');
+          blockedCount++;
         }
       });
     } catch (error) {
       console.warn('Error removing nodes for selector:', sel, error);
     }
   });
+  
+  // Update statistics if we blocked something
+  if (blockedCount > 0) {
+    updateStats('adsBlocked');
+  }
 }
 
 // Utility: try to click "Skip Ad" if it's visible
@@ -175,8 +205,85 @@ function isEnabled() {
   }
 }
 
+// Check for video ads more aggressively
+function checkForVideoAds() {
+  const videoElement = document.querySelector('video');
+  if (videoElement) {
+    // Check for ad indicators
+    const adIndicators = [
+      '.ytp-ad-player-overlay',
+      '.ytp-ad-text',
+      '.ytp-ad-skip-button-container',
+      '[data-ad-impression]',
+      '.ytp-ad-module'
+    ];
+    
+    let hasAd = false;
+    for (const selector of adIndicators) {
+      if (document.querySelector(selector)) {
+        hasAd = true;
+        break;
+      }
+    }
+    
+    // If ad detected, try to skip or block it
+    if (hasAd) {
+      trySkipAd();
+      updateStats('adsBlocked');
+      
+      // Try to fast-forward video if possible
+      if (videoElement.duration) {
+        videoElement.currentTime = videoElement.duration;
+      }
+    }
+  }
+}
+
+// More aggressive ad removal
+function aggressiveAdRemoval() {
+  // Look for ad-related class names in all elements
+  const allElements = document.querySelectorAll('*');
+  let blockedCount = 0;
+  
+  allElements.forEach(element => {
+    const className = element.className || '';
+    const id = element.id || '';
+    
+    // Check for ad-related patterns
+    const adPatterns = [
+      'ad', 'advertisement', 'promo', 'sponsored', 
+      'commercial', 'banner', 'popup-ad'
+    ];
+    
+    for (const pattern of adPatterns) {
+      if (className.includes(pattern) || id.includes(pattern)) {
+        // Make sure it's not a false positive
+        const isFalsePositive = [
+          'load', 'grade', 'badge', 'icon', 'avatar',
+          'thumbnail', 'title', 'channel', 'video'
+        ].some(safePattern => className.includes(safePattern));
+        
+        if (!isFalsePositive && !element.hasAttribute('data-ycu-hidden')) {
+          element.style.display = 'none';
+          element.style.visibility = 'hidden';
+          element.style.opacity = '0';
+          element.setAttribute('data-ycu-hidden', 'true');
+          blockedCount++;
+        }
+      }
+    }
+  });
+  
+  if (blockedCount > 0) {
+    updateStats('adsBlocked');
+  }
+}
+
 // Initialization
 (function init() {
+  // Initialize statistics for this page
+  updateStats('pagesCleaned');
+  
   // Wait a bit for page to load
   setTimeout(() => {
     startCleanupLoop();
@@ -187,10 +294,14 @@ function isEnabled() {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       removeNodes(AD_SELECTORS);
       trySkipAd();
+      aggressiveAdRemoval();
+      checkForVideoAds();
     } else {
       document.addEventListener('DOMContentLoaded', () => {
         removeNodes(AD_SELECTORS);
         trySkipAd();
+        aggressiveAdRemoval();
+        checkForVideoAds();
       });
     }
   }, 100);
@@ -201,6 +312,8 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && isEnabled()) {
     removeNodes(AD_SELECTORS);
     trySkipAd();
+    aggressiveAdRemoval();
+    checkForVideoAds();
   }
 });
 
@@ -209,5 +322,69 @@ window.addEventListener('focus', () => {
   if (isEnabled()) {
     removeNodes(AD_SELECTORS);
     trySkipAd();
+    aggressiveAdRemoval();
+    checkForVideoAds();
   }
 });
+
+// Enhanced video ad detection
+function enhancedVideoAdDetection() {
+  const video = document.querySelector('video');
+  if (!video) return;
+  
+  // Check for ad-related attributes and classes
+  const videoContainer = video.closest('.html5-video-player') || video.closest('.video-player') || video.parentElement;
+  
+  if (videoContainer) {
+    // Look for ad-related class names in video container
+    const containerClasses = videoContainer.className || '';
+    const adIndicators = [
+      'ad-showing', 'ad-interrupting', 'ad-break',
+      'ytp-ad-mode', 'ytp-ad-slate', 'ytp-ad-preview'
+    ];
+    
+    const hasAdIndicator = adIndicators.some(indicator => 
+      containerClasses.includes(indicator)
+    );
+    
+    if (hasAdIndicator) {
+      updateStats('adsBlocked');
+      
+      // Try multiple skip methods
+      trySkipAd();
+      
+      // Try to mute ad
+      video.muted = true;
+      
+      // Try to fast-forward
+      setTimeout(() => {
+        if (video.duration) {
+          video.currentTime = video.duration;
+        }
+      }, 100);
+    }
+    
+    // Monitor video for ad changes
+    const observer = new MutationObserver(() => {
+      if (isEnabled()) {
+        checkForVideoAds();
+        enhancedVideoAdDetection();
+      }
+    });
+    
+    observer.observe(videoContainer, {
+      attributes: true,
+      attributeFilter: ['class'],
+      childList: true,
+      subtree: true
+    });
+  }
+}
+
+// Periodic enhanced detection
+setInterval(() => {
+  if (isEnabled()) {
+    enhancedVideoAdDetection();
+    aggressiveAdRemoval();
+  }
+}, 1000); // Check every second for ads

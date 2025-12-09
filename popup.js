@@ -7,6 +7,7 @@ class PopupController {
         this.loadSettings();
         this.loadStatistics();
         this.checkCurrentTab();
+        this.initializeDeveloperAnimations();
     }
 
     initializeElements() {
@@ -239,6 +240,68 @@ class PopupController {
 
     hideError() {
         this.errorMessage.style.display = 'none';
+    }
+
+    initializeDeveloperAnimations() {
+        // Add interactive hover effect to developer name
+        const developerName = document.getElementById('developerName');
+        const developerCredit = document.getElementById('developerCredit');
+        
+        if (developerName) {
+            // Create heart particles on hover
+            developerName.addEventListener('mouseenter', () => {
+                this.createHeartParticle(developerName);
+            });
+            
+            // Add glow effect on click
+            developerName.addEventListener('click', () => {
+                this.createGlowEffect(developerName);
+            });
+        }
+        
+        // Add floating animation to credit section
+        if (developerCredit) {
+            this.addFloatingAnimation(developerCredit);
+        }
+    }
+
+    createHeartParticle(element) {
+        const heart = document.createElement('span');
+        heart.className = 'heart-particle';
+        heart.textContent = '❤️';
+        heart.style.left = Math.random() * 100 + '%';
+        heart.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        
+        element.appendChild(heart);
+        
+        // Remove after animation completes
+        setTimeout(() => {
+            if (heart.parentNode) {
+                heart.parentNode.removeChild(heart);
+            }
+        }, 3000);
+    }
+
+    createGlowEffect(element) {
+        element.style.transition = 'all 0.3s ease';
+        element.style.transform = 'scale(1.2)';
+        element.style.filter = 'drop-shadow(0 0 20px rgba(255,255,255,0.8))';
+        
+        setTimeout(() => {
+            element.style.transform = 'scale(1)';
+            element.style.filter = 'none';
+        }, 300);
+    }
+
+    addFloatingAnimation(element) {
+        // Add subtle floating animation
+        element.style.animation = 'fadeInUp 1s ease-out, floatUp 6s ease-in-out infinite';
+        
+        // Change animation timing periodically for variety
+        setInterval(() => {
+            const duration = (Math.random() * 3 + 4) + 's';
+            element.style.animationDuration = `fadeInUp 1s ease-out, floatUp ${duration} ease-in-out infinite`;
+        }, 5000);
     }
 }
 
