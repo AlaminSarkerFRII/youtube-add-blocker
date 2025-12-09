@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Ad Blocker Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .ad-element {
+            background-color: #ffeb3b;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #ffc107;
+            border-radius: 4px;
+        }
+        .ytp-ad-skip-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>YouTube Ad Blocker Test Page</h1>
+    
+    <div class="test-container">
+        <h2>MutationObserver Test</h2>
+        <div id="status" class="status info">Testing MutationObserver functionality...</div>
+        
+        <button onclick="testMutationObserver()">Test MutationObserver</button>
+        <button onclick="addAdElements()">Add Ad Elements</button>
+        <button onclick="clearTest()">Clear Test</button>
+        
+        <div id="testArea">
+            <p>This area will be monitored for DOM changes.</p>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Ad Elements Test</h2>
+        <div class="ad-element ytp-ad-module">Test Ad Module</div>
+        <div class="ad-element ytp-ad-player-overlay">Test Ad Overlay</div>
+        <div class="ad-element ytp-ad-preview-slot">Test Ad Preview</div>
+        <button class="ytp-ad-skip-button">Skip Ad</button>
+        <div class="ytp-ad-skip-button-container">
+            <button>Skip Ad Container</button>
+        </div>
+    </div>
+
+    <script>
+        let testObserver = null;
+        let testCount = 0;
+
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        function testMutationObserver() {
+            try {
+                // Test the fixed MutationObserver logic
+                const testElement = document.getElementById('testArea');
+                
+                if (!testElement) {
+                    updateStatus('Test element not found!', 'error');
+                    return;
+                }
+
+                testObserver = new MutationObserver((mutations) => {
+                    testCount++;
+                    updateStatus(`MutationObserver working! Detected ${mutations.length} changes. Total tests: ${testCount}`, 'success');
+                    
+                    // Simulate the ad blocking logic
+                    mutations.forEach((mutation) => {
+                        if (mutation.addedNodes) {
+                            mutation.addedNodes.forEach((node) => {
+                                if (node.nodeType === Node.ELEMENT_NODE) {
+                                    // Check for ad elements
+                                    if (node.classList && node.classList.contains('ad-element')) {
+                                        console.log('Found ad element:', node);
+                                        setTimeout(() => {
+                                            node.classList.add('hidden');
+                                            console.log('Hidden ad element:', node);
+                                        }, 100);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+
+                testObserver.observe(testElement, {
+                    childList: true,
+                    subtree: true,
+                    attributes: false
+                });
+
+                updateStatus('MutationObserver started successfully! Try adding elements.', 'success');
+                
+            } catch (error) {
+                updateStatus(`Error: ${error.message}`, 'error');
+                console.error('MutationObserver test error:', error);
+            }
+        }
+
+        function addAdElements() {
+            const testArea = document.getElementById('testArea');
+            
+            // Create new ad elements
+            const newAd1 = document.createElement('div');
+            newAd1.className = 'ad-element ytp-ad-module';
+            newAd1.textContent = 'Dynamic Ad Module 1';
+            
+            const newAd2 = document.createElement('div');
+            newAd2.className = 'ad-element ytp-ad-player-overlay';
+            newAd2.textContent = 'Dynamic Ad Overlay 1';
+            
+            const newAd3 = document.createElement('button');
+            newAd3.className = 'ytp-ad-skip-button';
+            newAd3.textContent = 'Skip Dynamic Ad';
+            
+            testArea.appendChild(newAd1);
+            testArea.appendChild(newAd2);
+            testArea.appendChild(newAd3);
+            
+            updateStatus('Added 3 new elements. MutationObserver should detect them.', 'info');
+        }
+
+        function clearTest() {
+            const testArea = document.getElementById('testArea');
+            testArea.innerHTML = '<p>This area will be monitored for DOM changes.</p>';
+            
+            if (testObserver) {
+                testObserver.disconnect();
+                testObserver = null;
+            }
+            
+            testCount = 0;
+            updateStatus('Test cleared. Observer disconnected.', 'info');
+        }
+
+        // Test document.documentElement and document.body availability
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (document.documentElement) {
+                    console.log('✅ document.documentElement is available');
+                } else {
+                    console.error('❌ document.documentElement is NOT available');
+                }
+                
+                if (document.body) {
+                    console.log('✅ document.body is available');
+                } else {
+                    console.error('❌ document.body is NOT available');
+                }
+                
+                updateStatus('Page loaded. DOM elements checked. Ready for testing.', 'success');
+            }, 100);
+        });
+    </script>
+</body>
+</html>

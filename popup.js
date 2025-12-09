@@ -139,12 +139,27 @@ class PopupController {
         try {
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tabs.length > 0) {
-                chrome.tabs.reload(tabs[0].id);
-                window.close();
+                // Show loading state
+                this.refreshButton.textContent = '🔄 Refreshing...';
+                this.refreshButton.disabled = true;
+                
+                // Wait a moment before refreshing to let ad blocking finish
+                setTimeout(() => {
+                    chrome.tabs.reload(tabs[0].id);
+                    
+                    // Close popup after a delay to ensure refresh completes
+                    setTimeout(() => {
+                        window.close();
+                    }, 500);
+                }, 300);
             }
         } catch (error) {
             this.showError('Failed to refresh tab: ' + error.message);
             console.error('Error refreshing tab:', error);
+            
+            // Reset button state on error
+            this.refreshButton.textContent = '🔄 Refresh Current Page';
+            this.refreshButton.disabled = false;
         }
     }
 

@@ -1,7 +1,10 @@
+// YouTube Clean UI - Stable Ad Blocker
+// Optimized to prevent crashes and ensure smooth video playback
+
 // Statistics tracking
 let adsBlocked = 0;
 let pagesCleaned = 0;
-let lastCleanupTime = Date.now();
+let isProcessing = false;
 
 // Update statistics in storage
 function updateStats(type) {
@@ -20,80 +23,108 @@ function updateStats(type) {
   }
 }
 
-// Utility: safe query removal
+// Check if extension is enabled
+function isEnabled() {
+  try {
+    return localStorage.getItem('ycu_enabled') !== '0';
+  } catch (error) {
+    console.warn('Error checking enabled state:', error);
+    return true;
+  }
+}
+
+// Safe element removal with crash prevention
 function removeNodes(selectors) {
-  if (!isEnabled()) return;
+  if (!isEnabled() || isProcessing) return;
   
   let blockedCount = 0;
+  isProcessing = true;
   
-  selectors.forEach(sel => {
-    try {
-      document.querySelectorAll(sel).forEach(node => {
-        // Avoid removing essential player nodes by checking common ad classes
-        if (node && !node.hasAttribute('data-ycu-hidden')) {
-          node.style.display = 'none';
-          node.style.visibility = 'hidden';
-          node.style.opacity = '0';
-          node.setAttribute('data-ycu-hidden', 'true');
-          blockedCount++;
+  try {
+    // Process selectors in smaller batches to prevent overload
+    let processed = 0;
+    const maxSelectors = Math.min(selectors.length, 10); // Limit to prevent crashes
+    
+    for (let i = 0; i < maxSelectors; i++) {
+      const sel = selectors[i];
+      
+      try {
+        const nodes = document.querySelectorAll(sel);
+        nodes.forEach(node => {
+          if (node && !node.hasAttribute('data-ycu-hidden')) {
+            // Don't block video-related elements
+            const tagName = node.tagName.toLowerCase();
+            const className = node.className || '';
+            
+            const isVideoElement = tagName === 'video' || 
+                                 tagName === 'canvas' ||
+                                 className.includes('html5-video-player') ||
+                                 className.includes('video-container');
+            
+            if (!isVideoElement) {
+              node.style.display = 'none';
+              node.setAttribute('data-ycu-hidden', 'true');
+              blockedCount++;
+            }
+          }
+        });
+        processed++;
+        
+        // Small delay every few selectors to prevent overload
+        if (processed % 3 === 0) {
+          // Non-blocking delay
+          const start = Date.now();
+          while (Date.now() - start < 5) {
+            // Very small delay
+          }
         }
-      });
-    } catch (error) {
-      console.warn('Error removing nodes for selector:', sel, error);
+      } catch (error) {
+        console.warn('Error with selector:', sel, error);
+      }
     }
-  });
+  } catch (error) {
+    console.error('Critical error in removeNodes:', error);
+  } finally {
+    isProcessing = false;
+  }
   
-  // Update statistics if we blocked something
+  // Update statistics
   if (blockedCount > 0) {
     updateStats('adsBlocked');
   }
 }
 
-// Utility: try to click "Skip Ad" if it's visible
+// Safe ad skip with minimal interference
 function trySkipAd() {
   if (!isEnabled()) return;
   
-  const skipButtons = [
-    '.ytp-ad-skip-button',
-    '.ytp-ad-skip-button-modern',
-    '.ytp-ad-skip-button-container button'
-  ];
-
-  for (const sel of skipButtons) {
-    try {
-      const btn = document.querySelector(sel);
-      if (btn && isVisible(btn)) {
-        btn.click();
-        break;
-      }
-    } catch (error) {
-      console.warn('Error clicking skip button:', sel, error);
-    }
-  }
-}
-
-// Visibility check
-function isVisible(el) {
-  if (!el) return false;
-  
   try {
-    const rect = el.getBoundingClientRect();
-    const style = window.getComputedStyle(el);
-    return (
-      rect.width > 0 &&
-      rect.height > 0 &&
-      style.visibility !== 'hidden' &&
-      style.display !== 'none' &&
-      style.opacity !== '0'
-    );
+    const skipButtons = [
+      '.ytp-ad-skip-button',
+      '.ytp-ad-skip-button-modern',
+      '.ytp-ad-skip-button-container button'
+    ];
+
+    for (const sel of skipButtons) {
+      try {
+        const btn = document.querySelector(sel);
+        if (btn && btn.offsetParent !== null) {
+          btn.click();
+          updateStats('adsBlocked');
+          break;
+        }
+      } catch (error) {
+        console.warn('Skip button error:', error);
+      }
+    }
   } catch (error) {
-    return false;
+    console.error('Critical error in trySkipAd:', error);
   }
 }
 
-// Core selectors to suppress
+// Core ad selectors (conservative)
 const AD_SELECTORS = [
-  '.video-ads',
+  // Video player ads
   '.ytp-ad-module',
   '.ytp-ad-player-overlay',
   '.ytp-ad-preview-slot',
@@ -106,285 +137,173 @@ const AD_SELECTORS = [
   '.ytp-ad-player-overlay-layout',
   '.ytp-ad-button',
   '.ytp-endscreen-ads-slot',
-  'ad-slot',
-  '.ad-slot',
+  
+  // Sidebar and promoted content
   'ytd-promoted-video-renderer',
-  '.ytd-promoted-video-renderer',
-  'ytd-promoted-sparkles-web-renderer',
   '.ytd-promoted-sparkles-web-renderer',
-  'ytd-promoted-sparkles-text-search-renderer',
-  '.ytd-promoted-sparkles-text-search-renderer',
   'ytd-companion-slot-renderer',
-  '.ytd-companion-slot-renderer',
   'ytd-statement-banner-renderer',
-  '.ytd-statement-banner-renderer',
   'ytd-display-ad-renderer',
-  '.ytd-display-ad-renderer',
   'ytd-action-companion-renderer',
-  '.ytd-action-companion-renderer',
-  'ytd-breaking-news-shell',
-  '.ytd-breaking-news-shell',
+  
+  // Homepage ads
   'ytd-rich-list-header-renderer',
-  '.ytd-rich-list-header-renderer',
   'ytd-engagement-panel-section-list-renderer[panel-target-id="engagement-panel-ads"]',
   '#masthead-ad',
   '.ad-container',
   '.ad-div',
   '.ad-banner',
   '#player-ads',
-  '.ytp-ad-overlay',
+  
+  // Generic ad indicators
   '[data-ad-impression]',
   '.ytp-ad-module',
-  // Additional common ad selectors
-  '[data-ad-format]',
-  '.ytd-ad-slot-renderer',
-  '.ytd-in-feed-ad-layout-renderer',
-  '.ytd-action-companion-ad-renderer'
+  '[data-ad-format]'
 ];
 
-// Periodic cleanup
+// Periodic cleanup (conservative)
 let cleanupInterval;
 
 function startCleanupLoop() {
   if (cleanupInterval) clearInterval(cleanupInterval);
+  
+  // Longer interval to prevent crashes
   cleanupInterval = setInterval(() => {
-    if (isEnabled()) {
+    if (isEnabled() && !isProcessing) {
       removeNodes(AD_SELECTORS);
-      trySkipAd(); // only acts if a visible "Skip" exists
+      trySkipAd();
     }
-  }, 500); // Reduced interval for better responsiveness
+  }, 2000); // 2 seconds - much more conservative
 }
 
-// Observe DOM mutations
+// DOM observer (limited)
 function observeDom() {
-  const observer = new MutationObserver(mutations => {
-    if (!isEnabled()) return;
-    
-    let needsCleanup = false;
-    for (const m of mutations) {
-      if (m.addedNodes && m.addedNodes.length) {
-        needsCleanup = true;
-        break;
-      }
-    }
-    if (needsCleanup) {
-      removeNodes(AD_SELECTORS);
-      trySkipAd();
-    }
-  });
-
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
-}
-
-function onNavigationChange() {
-  // YouTube is an SPA; watch URL changes
-  let lastUrl = location.href;
-  new MutationObserver(() => {
-    const url = location.href;
-    if (url !== lastUrl) {
-      lastUrl = url;
-      // Re-run cleanup on navigation
-      if (isEnabled()) {
-        removeNodes(AD_SELECTORS);
-        trySkipAd();
-      }
-    }
-  }).observe(document.body, { childList: true, subtree: true });
-}
-
-// Check if extension is enabled
-function isEnabled() {
   try {
-    return localStorage.getItem('ycu_enabled') !== '0';
-  } catch (error) {
-    console.warn('Error checking enabled state:', error);
-    return true; // Default to enabled if there's an error
-  }
-}
-
-// Check for video ads more aggressively
-function checkForVideoAds() {
-  const videoElement = document.querySelector('video');
-  if (videoElement) {
-    // Check for ad indicators
-    const adIndicators = [
-      '.ytp-ad-player-overlay',
-      '.ytp-ad-text',
-      '.ytp-ad-skip-button-container',
-      '[data-ad-impression]',
-      '.ytp-ad-module'
-    ];
-    
-    let hasAd = false;
-    for (const selector of adIndicators) {
-      if (document.querySelector(selector)) {
-        hasAd = true;
-        break;
-      }
+    // Check if document.documentElement exists before observing
+    if (!document.documentElement) {
+      console.warn('document.documentElement not available, retrying...');
+      setTimeout(observeDom, 100);
+      return;
     }
-    
-    // If ad detected, try to skip or block it
-    if (hasAd) {
-      trySkipAd();
-      updateStats('adsBlocked');
+
+    const observer = new MutationObserver((mutations) => {
+      if (!isEnabled() || isProcessing) return;
       
-      // Try to fast-forward video if possible
-      if (videoElement.duration) {
-        videoElement.currentTime = videoElement.duration;
-      }
-    }
-  }
-}
-
-// More aggressive ad removal
-function aggressiveAdRemoval() {
-  // Look for ad-related class names in all elements
-  const allElements = document.querySelectorAll('*');
-  let blockedCount = 0;
-  
-  allElements.forEach(element => {
-    const className = element.className || '';
-    const id = element.id || '';
-    
-    // Check for ad-related patterns
-    const adPatterns = [
-      'ad', 'advertisement', 'promo', 'sponsored', 
-      'commercial', 'banner', 'popup-ad'
-    ];
-    
-    for (const pattern of adPatterns) {
-      if (className.includes(pattern) || id.includes(pattern)) {
-        // Make sure it's not a false positive
-        const isFalsePositive = [
-          'load', 'grade', 'badge', 'icon', 'avatar',
-          'thumbnail', 'title', 'channel', 'video'
-        ].some(safePattern => className.includes(safePattern));
-        
-        if (!isFalsePositive && !element.hasAttribute('data-ycu-hidden')) {
-          element.style.display = 'none';
-          element.style.visibility = 'hidden';
-          element.style.opacity = '0';
-          element.setAttribute('data-ycu-hidden', 'true');
-          blockedCount++;
+      let needsCleanup = false;
+      for (const m of mutations) {
+        if (m.addedNodes && m.addedNodes.length > 0 && m.addedNodes.length < 10) {
+          needsCleanup = true;
+          break;
         }
       }
-    }
-  });
-  
-  if (blockedCount > 0) {
-    updateStats('adsBlocked');
-  }
-}
-
-// Initialization
-(function init() {
-  // Initialize statistics for this page
-  updateStats('pagesCleaned');
-  
-  // Wait a bit for page to load
-  setTimeout(() => {
-    startCleanupLoop();
-    observeDom();
-    onNavigationChange();
-
-    // Try early if DOM is ready
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      removeNodes(AD_SELECTORS);
-      trySkipAd();
-      aggressiveAdRemoval();
-      checkForVideoAds();
-    } else {
-      document.addEventListener('DOMContentLoaded', () => {
-        removeNodes(AD_SELECTORS);
-        trySkipAd();
-        aggressiveAdRemoval();
-        checkForVideoAds();
-      });
-    }
-  }, 100);
-})();
-
-// Also run cleanup when page gains focus (helps with tab switching)
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && isEnabled()) {
-    removeNodes(AD_SELECTORS);
-    trySkipAd();
-    aggressiveAdRemoval();
-    checkForVideoAds();
-  }
-});
-
-// Additional cleanup on window focus
-window.addEventListener('focus', () => {
-  if (isEnabled()) {
-    removeNodes(AD_SELECTORS);
-    trySkipAd();
-    aggressiveAdRemoval();
-    checkForVideoAds();
-  }
-});
-
-// Enhanced video ad detection
-function enhancedVideoAdDetection() {
-  const video = document.querySelector('video');
-  if (!video) return;
-  
-  // Check for ad-related attributes and classes
-  const videoContainer = video.closest('.html5-video-player') || video.closest('.video-player') || video.parentElement;
-  
-  if (videoContainer) {
-    // Look for ad-related class names in video container
-    const containerClasses = videoContainer.className || '';
-    const adIndicators = [
-      'ad-showing', 'ad-interrupting', 'ad-break',
-      'ytp-ad-mode', 'ytp-ad-slate', 'ytp-ad-preview'
-    ];
-    
-    const hasAdIndicator = adIndicators.some(indicator => 
-      containerClasses.includes(indicator)
-    );
-    
-    if (hasAdIndicator) {
-      updateStats('adsBlocked');
       
-      // Try multiple skip methods
-      trySkipAd();
-      
-      // Try to mute ad
-      video.muted = true;
-      
-      // Try to fast-forward
-      setTimeout(() => {
-        if (video.duration) {
-          video.currentTime = video.duration;
-        }
-      }, 100);
-    }
-    
-    // Monitor video for ad changes
-    const observer = new MutationObserver(() => {
-      if (isEnabled()) {
-        checkForVideoAds();
-        enhancedVideoAdDetection();
+      if (needsCleanup && !isProcessing) {
+        setTimeout(() => {
+          if (isEnabled() && !isProcessing) {
+            removeNodes(AD_SELECTORS.slice(0, 10)); // Limit to first 10 selectors
+            trySkipAd();
+          }
+        }, 500);
       }
     });
-    
-    observer.observe(videoContainer, {
-      attributes: true,
-      attributeFilter: ['class'],
+
+    observer.observe(document.documentElement, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: false
     });
+  } catch (error) {
+    console.error('DOM observer error:', error);
   }
 }
 
-// Periodic enhanced detection
-setInterval(() => {
-  if (isEnabled()) {
-    enhancedVideoAdDetection();
-    aggressiveAdRemoval();
+// Navigation watcher (simplified)
+function onNavigationChange() {
+  let lastUrl = location.href;
+  
+  try {
+    // Check if document.body exists before observing
+    if (!document.body) {
+      console.warn('document.body not available, retrying...');
+      setTimeout(onNavigationChange, 100);
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      const url = location.href;
+      if (url !== lastUrl && !isProcessing) {
+        lastUrl = url;
+        updateStats('pagesCleaned');
+        
+        setTimeout(() => {
+          if (isEnabled() && !isProcessing) {
+            removeNodes(AD_SELECTORS.slice(0, 5)); // Very conservative on navigation
+          }
+        }, 1000);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: false // Less intensive
+    });
+  } catch (error) {
+    console.error('Navigation observer error:', error);
   }
-}, 1000); // Check every second for ads
+}
+
+// Safe initialization
+function init() {
+  try {
+    updateStats('pagesCleaned');
+    
+    // Wait longer for page to stabilize
+    setTimeout(() => {
+      try {
+        startCleanupLoop();
+        observeDom();
+        onNavigationChange();
+
+        // Initial cleanup (very conservative)
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          setTimeout(() => {
+            if (isEnabled() && !isProcessing) {
+              removeNodes(AD_SELECTORS.slice(0, 5)); // Only first 5 selectors initially
+              trySkipAd();
+            }
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Initialization error:', error);
+      }
+    }, 1000); // Longer initial delay
+  } catch (error) {
+    console.error('Critical initialization error:', error);
+  }
+}
+
+// Event listeners (minimal)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && isEnabled() && !isProcessing) {
+    setTimeout(() => {
+      removeNodes(AD_SELECTORS.slice(0, 3));
+      trySkipAd();
+    }, 500);
+  }
+});
+
+window.addEventListener('focus', () => {
+  if (isEnabled() && !isProcessing) {
+    setTimeout(() => {
+      removeNodes(AD_SELECTORS.slice(0, 3));
+      trySkipAd();
+    }, 500);
+  }
+});
+
+// Start the extension
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
