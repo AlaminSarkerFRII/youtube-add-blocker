@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>YouTube Clean UI Options</title></head>
+  <body>
+    <label>
+      <input type="checkbox" id="enableClean" />
+      Enable cleanup
+    </label>
+    <script>
+      const key = 'ycu_enabled';
+      const box = document.getElementById('enableClean');
+      box.addEventListener('change', () => {
+        localStorage.setItem(key, box.checked ? '1' : '0');
+      });
+      box.checked = localStorage.getItem(key) !== '0';
+    </script>
+  </body>
+</html>

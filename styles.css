@@ -1,0 +1,47 @@
+/* Player ad modules */
+.ytp-ad-module,
+.ytp-ad-player-overlay,
+.ytp-ad-preview-slot,
+.ytp-ad-skip-button-container,
+.ytp-ad-progress-list,
+.ytp-ad-message-container,
+.ytp-ad-text,
+.ytp-ad-overlay-slot,
+.ytp-ad-image-overlay,
+.ytp-ad-player-overlay-layout,
+.ytp-ad-button,
+.video-ads,
+ad-slot,
+ytd-display-ad-renderer,
+ytd-promoted-sparkles-web-renderer,
+ytd-action-companion-renderer {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Sidebar/inline promoted items */
+ytd-promoted-video-renderer,
+ytd-promoted-sparkles-text-search-renderer,
+ytd-companion-slot-renderer,
+ytd-statement-banner-renderer {
+  display: none !important;
+}
+
+/* Home page banners and experiment containers */
+ytd-breaking-news-shell,
+ytd-rich-list-header-renderer,
+ytd-engagement-panel-section-list-renderer[panel-target-id="engagement-panel-ads"],
+#masthead-ad, .ad-div, .ad-container, .ad-banner {
+  display: none !important;
+}
+
+/* Prevent layout shifts caused by hidden elements */
+ytd-watch-flexy, #columns, #primary, #secondary {
+  contain: layout style paint;
+}
+
+/* Optional: hide end-screen suggestions marked as ads */
+.ytp-endscreen-ads-slot {
+  display: none !important;
+}
